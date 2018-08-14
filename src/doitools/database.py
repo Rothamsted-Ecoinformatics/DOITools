@@ -3,19 +3,21 @@ Created on 9 Aug 2018
 
 @author: ostlerr
 '''
-import pyodbc
 import sys
+import pyodbc
+from datetime import date
 from dataCiteConnect import getDataCiteClient 
 from datacite.schema41 import contributors, creators, descriptions, dates, sizes,\
     geolocations, fundingreferences, related_identifiers
 from datacite import schema41
 
 class DocumentInfo:
-        
-    def __init__(self, mdId, url):
-        self.url = url
-        self.mdId = mdId
+    
+    def __init__(self):
+        self.url = None
+        self.mdId = None
         self.data = None
+        
         
 class Person:
     def __init__(self, row):
@@ -74,8 +76,8 @@ class Person:
         return contributor
 
 def connect():
-    #con = pyodbc.connect(r'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=C:\Users\ostlerr\OneDrive - Rothamsted Research\ERA\DataCite Schema database\DataCite Metadata database.accdb;')
-    con = pyodbc.connect(r'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=D:\code\access\DataCite Metadata database.accdb;')
+    con = pyodbc.connect(r'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=C:\Users\ostlerr\OneDrive - Rothamsted Research\ERA\DataCite Schema database\DataCite Metadata database.accdb;')
+    #con = pyodbc.connect(r'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=D:\code\access\DataCite Metadata database.accdb;')
     return con
 
 def getCursor():
@@ -83,7 +85,7 @@ def getCursor():
     cur = con.cursor()
     return cur
 
-def getDocumentMetadata():
+def getDocumentMetadata(mdId):
     cur = getCursor()
     cur.execute("""select m.md_id, m.url, m.identifier, m.identifier_type, m.title, p.organisation_name as publisher, publication_year, grt.type_value as grt_value, srt.type_value as srt_value,
         m.language, m.version, f.mime_type, f.extension, m.rights_text, m.rights_licence_uri, m.rights_licence, m.description_abstract,m.description_methods,m.description_toc,m.description_technical_info,m.description_quality,m.description_provenance,m.description_other,
@@ -94,7 +96,8 @@ def getDocumentMetadata():
         inner join specific_resource_types srt on m.srt_id = srt.srt_id)
         inner join formats f on m.format_id = f.format_id)
         inner join long_term_experiment lte on m.lte_id = lte.lte_id)
-        inner join fields fl on lte.field_id = fl.field_id""")
+        inner join fields fl on lte.field_id = fl.field_id
+        where m.md_id = ?""", mdId)
     return cur
 
 def prepareCreators(mdId):
@@ -242,13 +245,13 @@ def prepareFundingReferences(mdId):
     return fundingreferences
 
 def process(documentInfo):
-    mdCursor = getDocumentMetadata()
+    mdId = documentInfo.mdId
+    mdCursor = getDocumentMetadata(mdId)
     mdRow = mdCursor.fetchone()
     data = None
     if mdRow:
-        mdId = mdRow.md_id
         mdUrl = mdRow.url
-        documentInfo = DocumentInfo(mdId,mdUrl)
+        documentInfo.url = mdUrl
         data = {
             'identifier' : {
                 'identifier' : mdRow.identifier,
@@ -288,22 +291,40 @@ def process(documentInfo):
         
     documentInfo.data = data    
     return documentInfo    
-    
-        
 
-documentInfo = None        
-documentInfo = process(documentInfo)
+def logDoiMinted(documentInfo):
+    try:
+        con = connect()
+        cur = con.cursor()
+        print(documentInfo.mdId)
+        
+        cur.execute("update metadata_document set doi_created = now() where md_id = ?", documentInfo.mdId)
+        con.commit()
+    except AttributeError as error:
+        print(error)
+    except pyodbc.Error as error:
+        print(error)
+    
 
 try:
+    documentInfo = DocumentInfo()        
+    documentInfo.mdId = input('Enter Document ID: ')
+    documentInfo = process(documentInfo)
+    
     xname = "D:/doi_out/"+ str(documentInfo.mdId) + ".xml"
     fxname = open(xname,'w+')
     fxname.write(schema41.tostring(documentInfo.data))
     fxname.close()
-    #d = getDataCiteClient()
-    #d.metadata_post(schema41.tostring(data))
-    #doi = data['identifier']['identifier']
-    #d.doi_post(doi, documentInfo.url)
+    d = getDataCiteClient()
+    d.metadata_post(schema41.tostring(documentInfo.data))
+    doi = documentInfo.data['identifier']['identifier']
+    d.doi_post(doi, documentInfo.url)
+    logDoiMinted(documentInfo)
     print('done')
+except pyodbc.Error as error:
+    print(error)
+except datacite.errors.DataCiteServerError as error:
+    print(error)
 except:
     print("Unexpected error:", sys.exc_info()[0])        
     
