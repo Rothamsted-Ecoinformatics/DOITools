@@ -76,7 +76,7 @@ class Person:
         return contributor
 
 def connect():
-    con = pyodbc.connect(r'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=C:\Users\ostlerr\OneDrive - Rothamsted Research\ERA\DataCite Schema database\DataCite Metadata database.accdb;')
+    con = pyodbc.connect(r'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=Z:\website development\datacite\DataCite Metadata database.accdb;')
     #con = pyodbc.connect(r'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=D:\code\access\DataCite Metadata database.accdb;')
     return con
 
@@ -149,15 +149,15 @@ def prepareContributors(mdId):
 def prepareSubjects(mdId):
     cur = getCursor()
     subjects = []
-    cur.execute("""select s.subject, s.subject_uri, ss.subject_scheme, ss.scheme_uri
+    cur.execute("""select s.subject, s.subject_uri, ss.subject_schema, ss.schema_uri
         from (subjects s
-        inner join subject_schemes ss on s.ss_id = ss.ss_id)
+        inner join subject_schemas ss on s.ss_id = ss.ss_id)
         inner join document_subjects ds on s.subject_id = ds.subject_id 
         where ds.md_id = ?""", mdId)
-    
+    1535448515
     results = cur.fetchall()    
     for row in results: 
-        subjects.append({'lang' : 'en', 'subjectScheme' : row.subject_scheme, 'schemeURI' : row.scheme_uri, 'valueURI' : row.subject_uri, 'subject' : row.subject})
+        subjects.append({'lang' : 'en', 'subjectScheme' : row.subject_schema, 'schemeURI' : row.schema_uri, 'valueURI' : row.subject_uri, 'subject' : row.subject})
         
     return subjects
     
@@ -205,15 +205,15 @@ def prepareRelatedIdentifiers(mdId):
 def prepareSizes(mdId):
     cur = getCursor()
     sizes = []
-    cur.execute("""select u.unit_value, ds.size_value
+    cur.execute("""select u.abbreviation, ds.size_value
         from document_sizes ds inner join units u on ds.unit_id = u.unit_id where ds.md_id = ?""", mdId)
     
     results = cur.fetchall()    
     for row in results: 
-        if row.unit_value == 'None':
+        if row.abbreviation == 'None':
             sizes.append(row.size_value)
         else:
-            sizes.append(str(row.size_value) + ' ' + row.unit_value)
+            sizes.append(str(row.size_value) + ' ' + row.abbreviation)
         
     return sizes
 
@@ -249,9 +249,11 @@ def process(documentInfo):
     mdCursor = getDocumentMetadata(mdId)
     mdRow = mdCursor.fetchone()
     data = None
+    print("hello" + mdId)
     if mdRow:
         mdUrl = mdRow.url
         documentInfo.url = mdUrl
+        print(documentInfo.url)
         data = {
             'identifier' : {
                 'identifier' : mdRow.identifier,
@@ -288,6 +290,7 @@ def process(documentInfo):
             ],
             'fundingReferences' : prepareFundingReferences(mdId)
         }
+        print(data)
         
     documentInfo.data = data    
     return documentInfo    
@@ -296,8 +299,6 @@ def logDoiMinted(documentInfo):
     try:
         con = connect()
         cur = con.cursor()
-        print(documentInfo.mdId)
-        
         cur.execute("update metadata_document set doi_created = now() where md_id = ?", documentInfo.mdId)
         con.commit()
     except AttributeError as error:
@@ -321,8 +322,7 @@ try:
     d.doi_post(doi, documentInfo.url)
     logDoiMinted(documentInfo)
     print('done')
-except pyodbc.Error as error:
-    print(error)
+
 except datacite.errors.DataCiteServerError as error:
     print(error)
 except:
