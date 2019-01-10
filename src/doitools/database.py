@@ -6,6 +6,7 @@ Created on 9 Aug 2018
 import sys
 import pyodbc
 from datetime import date
+import configparser
 from dataCiteConnect import getDataCiteClient 
 from datacite.schema41 import contributors, creators, descriptions, dates, sizes,\
     geolocations, fundingreferences, related_identifiers
@@ -76,7 +77,13 @@ class Person:
         return contributor
 
 def connect():
-    con = pyodbc.connect(r'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=Z:\website development\datacite\DataCite Metadata database.accdb;')
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    dsn=config['SQL_SERVER']['DSN']
+    uid = config['SQL_SERVER']['UID']
+    pwd = config['SQL_SERVER']['PWD']
+    con = pyodbc.connect('DSN='+dsn+';uid='+uid+';pwd='+pwd)
+    #con = pyodbc.connect(r'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=Z:\website development\datacite\DataCite Metadata database.accdb;')
     #con = pyodbc.connect(r'Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=D:\code\access\DataCite Metadata database.accdb;')
     return con
 
@@ -93,9 +100,9 @@ def getDocumentMetadata(mdId):
         from (((((metadata_document m
         inner join organisation p on m.publisher = p.organisation_id)
         inner join general_resource_types grt on m.grt_id = grt.grt_id)
-        inner join specific_resource_types srt on m.srt_id = srt.srt_id)
+        left outer join specific_resource_types srt on m.srt_id = srt.srt_id)
         inner join formats f on m.format_id = f.format_id)
-        inner join long_term_experiment lte on m.lte_id = lte.lte_id)
+        inner join experiment lte on m.lte_id = lte.experiment_id)
         inner join fields fl on lte.field_id = fl.field_id
         where m.md_id = ?""", mdId)
     return cur
@@ -205,15 +212,15 @@ def prepareRelatedIdentifiers(mdId):
 def prepareSizes(mdId):
     cur = getCursor()
     sizes = []
-    cur.execute("""select u.abbreviation, ds.size_value
-        from document_sizes ds inner join units u on ds.unit_id = u.unit_id where ds.md_id = ?""", mdId)
+    cur.execute("""select u.unit_short_name, ds.size_value
+        from document_sizes ds inner join measurement_unit u on ds.unit_id = u.unit_id where ds.md_id = ?""", mdId)
     
     results = cur.fetchall()    
     for row in results: 
-        if row.abbreviation == 'None':
+        if row.unit_short_name == 'None':
             sizes.append(row.size_value)
         else:
-            sizes.append(str(row.size_value) + ' ' + row.abbreviation)
+            sizes.append(str(row.size_value) + ' ' + row.unit_short_name)
         
     return sizes
 
@@ -299,7 +306,7 @@ def logDoiMinted(documentInfo):
     try:
         con = connect()
         cur = con.cursor()
-        cur.execute("update metadata_document set doi_created = now() where md_id = ?", documentInfo.mdId)
+        cur.execute("update metadata_document set doi_created = getdate() where md_id = ?", documentInfo.mdId)
         con.commit()
     except AttributeError as error:
         print(error)
