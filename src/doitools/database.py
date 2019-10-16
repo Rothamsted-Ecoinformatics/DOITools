@@ -5,6 +5,7 @@ Created on 9 Aug 2018
 '''
 import sys
 import pyodbc
+import json
 from datetime import date
 import configparser
 from dataCiteConnect import getDataCiteClient 
@@ -256,7 +257,7 @@ def process(documentInfo):
     mdCursor = getDocumentMetadata(mdId)
     mdRow = mdCursor.fetchone()
     data = None
-    print("hello" + mdId)
+    print("Document ID is: " + mdId)
     if mdRow:
         mdUrl = mdRow.url
         documentInfo.url = mdUrl
@@ -297,9 +298,11 @@ def process(documentInfo):
             ],
             'fundingReferences' : prepareFundingReferences(mdId)
         }
-        print(data)
         
-    documentInfo.data = data    
+        
+    documentInfo.data = data
+    strJsData =  json.dumps(data, indent=4)
+    print(strJsData)
     return documentInfo    
 
 def logDoiMinted(documentInfo):
@@ -328,6 +331,8 @@ try:
     doi = documentInfo.data['identifier']['identifier']
     d.doi_post(doi, documentInfo.url)
     logDoiMinted(documentInfo)
+    
+    print ("xml file saved in " + xname)
     print('done')
 
 except datacite.errors.DataCiteServerError as error:

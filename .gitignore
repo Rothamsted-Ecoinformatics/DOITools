@@ -1,1 +1,3 @@
 *.ini
+src/doitools/__pycache__/dataCiteConnect.cpython-37.pyc
+.pydevproject
