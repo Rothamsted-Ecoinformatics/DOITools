@@ -8,6 +8,7 @@ import pyodbc
 import json
 from datetime import date
 import configparser
+import datacite
 from dataCiteConnect import getDataCiteClient 
 from datacite.schema41 import contributors, creators, descriptions, dates, sizes,\
     geolocations, fundingreferences, related_identifiers
@@ -331,7 +332,8 @@ try:
     doi = documentInfo.data['identifier']['identifier']
     d.doi_post(doi, documentInfo.url)
     logDoiMinted(documentInfo)
-    
+    docID =  documentInfo.mdId
+    print ("update metadata_document set doi_created = getdate() where md_id ="+docID)
     print ("xml file saved in " + xname)
     print('done')
 
