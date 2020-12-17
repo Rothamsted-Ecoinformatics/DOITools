@@ -215,7 +215,7 @@ def prepareSizes(mdId):
     cur = getCursor()
     sizes = []
     cur.execute("""select u.unit_short_name, ds.size_value
-        from document_sizes ds inner join measurement_unit u on ds.unit_id = u.unit_id where ds.md_id = ?""", mdId)
+        from document_sizes ds inner join measurement_unit u on ds.unit_id = u.unit_id where isIllustration = 0 and ds.md_id = ?""", mdId)
     
     results = cur.fetchall()    
     for row in results: 
