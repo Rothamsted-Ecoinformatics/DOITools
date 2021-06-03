@@ -21,6 +21,7 @@ def getmdIDs():
     mdids = [];
     cur = database.getCursor()
     sql = 'select m.md_id, m.isReady, m.doi_created from metadata_document m where m.doi_created is null and m.isReady = 2'
+    #sql = '''SELECT distinct  md_id FROM related_identifiers where related_identifier like '%www.era.rothamsted.ac.uk%' order by md_id'''
     cur.execute(sql)
     results = cur.fetchall()  
     counter = 0  
@@ -55,7 +56,7 @@ if __name__ == '__main__':
                 
             print ("update metadata_document set doi_created = getdate() where md_id ="+str(item))
             print ("xml file saved in " + xname)
-            print('test done')
+            print('done')
         except datacite.errors.DataCiteServerError as error:
             print(error)
         except:
