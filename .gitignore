@@ -1,3 +1,6 @@
 *.ini
 src/doitools/__pycache__/dataCiteConnect.cpython-37.pyc
 .pydevproject
+.project
+src/doitools/minttoday.txt
+src/doitools/__pycache__/database.cpython-37.pyc

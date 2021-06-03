@@ -258,7 +258,7 @@ def process(documentInfo):
     mdCursor = getDocumentMetadata(mdId)
     mdRow = mdCursor.fetchone()
     data = None
-    print("Document ID is: " + mdId)
+    print("Document ID is: " + str(mdId))
     if mdRow:
         mdUrl = mdRow.url
         documentInfo.url = mdUrl
@@ -316,30 +316,33 @@ def logDoiMinted(documentInfo):
         print(error)
     except pyodbc.Error as error:
         print(error)
-    
 
-try:
-    documentInfo = DocumentInfo()        
-    documentInfo.mdId = input('Enter Document ID: ')
-    documentInfo = process(documentInfo)
-    
-    xname = "D:/doi_out/"+ str(documentInfo.mdId) + ".xml"
-    fxname = open(xname,'w+')
-    fxname.write(schema41.tostring(documentInfo.data))
-    fxname.close()
-    d = getDataCiteClient()
-    d.metadata_post(schema41.tostring(documentInfo.data))
-    doi = documentInfo.data['identifier']['identifier']
-    d.doi_post(doi, documentInfo.url)
-    logDoiMinted(documentInfo)
-    docID =  documentInfo.mdId
-    print ("update metadata_document set doi_created = getdate() where md_id ="+docID)
-    print ("xml file saved in " + xname)
-    print('done')
 
-except datacite.errors.DataCiteServerError as error:
-    print(error)
-except:
-    print("Unexpected error:", sys.exc_info()[0])        
+        
     
-
+if __name__ == '__main__':
+    try:
+        documentInfo = DocumentInfo()        
+        documentInfo.mdId = input('Enter Document ID: ')
+        documentInfo = process(documentInfo)
+        
+        xname = "D:/doi_out/"+ str(documentInfo.mdId) + ".xml"
+        fxname = open(xname,'w+')
+        fxname.write(schema41.tostring(documentInfo.data))
+        fxname.close()
+        d = getDataCiteClient()
+        d.metadata_post(schema41.tostring(documentInfo.data))
+        doi = documentInfo.data['identifier']['identifier']
+        d.doi_post(doi, documentInfo.url)
+        logDoiMinted(documentInfo)
+        docID =  documentInfo.mdId
+        print ("update metadata_document set doi_created = getdate() where md_id ="+docID)
+        print ("xml file saved in " + xname)
+        print('done')
+    
+    except datacite.errors.DataCiteServerError as error:
+        print(error)
+    except:
+        print("Unexpected error:", sys.exc_info()[0])        
+        
+    
