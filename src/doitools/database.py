@@ -20,6 +20,7 @@ class DocumentInfo:
         self.url = None
         self.mdId = None
         self.data = None
+        self.isExternal = None
         
         
 class Person:
@@ -97,7 +98,8 @@ def getCursor():
 def getDocumentMetadata(mdId):
     cur = getCursor()
     cur.execute("""select m.md_id, m.url, m.identifier, m.identifier_type, m.title, p.organisation_name as publisher, publication_year, grt.type_value as grt_value, srt.type_value as srt_value,
-        m.language, m.version, f.mime_type, f.extension, m.rights_text, m.rights_licence_uri, m.rights_licence, m.description_abstract,m.description_methods,m.description_toc,m.description_technical_info,m.description_quality,m.description_provenance,m.description_other,
+        m.language, m.version, f.mime_type, f.extension, m.rights_text, m.rights_licence_uri, m.rights_licence, m.description_abstract,m.description_methods,m.description_toc,m.description_technical_info,
+        m.description_quality,m.description_provenance,m.description_other, m.isExternal, m.isReady,
         fl.fieldname, fl.geo_point_latitude, fl.geo_point_longitude
         from (((((metadata_document m
         inner join organisation p on m.publisher = p.organisation_id)
@@ -300,10 +302,10 @@ def process(documentInfo):
             'fundingReferences' : prepareFundingReferences(mdId)
         }
         
-        
+    documentInfo.isExternal =  mdRow.isExternal if mdRow.isExternal else 0
     documentInfo.data = data
     strJsData =  json.dumps(data, indent=4)
-    print(strJsData)
+    #print(strJsData)
     return documentInfo    
 
 def logDoiMinted(documentInfo):
@@ -325,21 +327,23 @@ if __name__ == '__main__':
         documentInfo = DocumentInfo()        
         documentInfo.mdId = input('Enter Document ID: ')
         documentInfo = process(documentInfo)
-        
-        xname = "D:/doi_out/"+ str(documentInfo.mdId) + ".xml"
-        fxname = open(xname,'w+')
-        fxname.write(schema41.tostring(documentInfo.data))
-        fxname.close()
-        d = getDataCiteClient()
-        d.metadata_post(schema41.tostring(documentInfo.data))
-        doi = documentInfo.data['identifier']['identifier']
-        d.doi_post(doi, documentInfo.url)
-        logDoiMinted(documentInfo)
-        docID =  documentInfo.mdId
-        print ("update metadata_document set doi_created = getdate() where md_id ="+docID)
-        print ("xml file saved in " + xname)
-        print('done')
-    
+        externalDS = documentInfo.isExternal
+        if externalDS == 0:
+            xname = "D:/doi_out/"+ str(documentInfo.mdId) + ".xml"
+            fxname = open(xname,'w+')
+            fxname.write(schema41.tostring(documentInfo.data))
+            fxname.close()
+            d = getDataCiteClient()
+            d.metadata_post(schema41.tostring(documentInfo.data))
+            doi = documentInfo.data['identifier']['identifier']
+            d.doi_post(doi, documentInfo.url)
+            logDoiMinted(documentInfo)
+            docID =  documentInfo.mdId
+            print ("update metadata_document set doi_created = getdate() where md_id ="+docID)
+            print ("xml file saved in " + xname)
+            print('done')
+        else: 
+            print("external dataset not minted")
     except datacite.errors.DataCiteServerError as error:
         print(error)
     except:

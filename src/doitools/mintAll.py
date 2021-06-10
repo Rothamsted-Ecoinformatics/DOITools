@@ -20,7 +20,7 @@ from datacite import schema41
 def getmdIDs():
     mdids = [];
     cur = database.getCursor()
-    sql = 'select m.md_id, m.isReady, m.doi_created from metadata_document m where m.doi_created is null and m.isReady = 2'
+    sql = 'select m.md_id, m.isReady, m.doi_created from metadata_document m where (m.doi_created is null and m.isReady = 2) and (isExternal is null or isExternal = 0)'
     #sql = '''SELECT distinct  md_id FROM related_identifiers where related_identifier like '%www.era.rothamsted.ac.uk%' order by md_id'''
     cur.execute(sql)
     results = cur.fetchall()  
@@ -28,6 +28,7 @@ def getmdIDs():
     for row in results:         
         counter +=1  
         mdids.append(row.md_id)                   
+    print (str(counter) + ' DOIs to mint')
     return mdids
 
 
