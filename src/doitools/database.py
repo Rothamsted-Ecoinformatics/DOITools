@@ -21,6 +21,7 @@ class DocumentInfo:
         self.mdId = None
         self.data = None
         self.isExternal = None
+        self.DOI = None
         
         
 class Person:
@@ -264,6 +265,7 @@ def process(documentInfo):
     if mdRow:
         mdUrl = mdRow.url
         documentInfo.url = mdUrl
+        documentInfo.DOI = mdRow.identifier
         print(documentInfo.url)
         data = {
             'identifier' : {
@@ -328,6 +330,8 @@ if __name__ == '__main__':
         documentInfo.mdId = input('Enter Document ID: ')
         documentInfo = process(documentInfo)
         externalDS = documentInfo.isExternal
+        DOIURL = "https://doi.org/"+documentInfo.DOI
+        
         if externalDS == 0:
             xname = "D:/doi_out/"+ str(documentInfo.mdId) + ".xml"
             fxname = open(xname,'w+')
@@ -341,6 +345,7 @@ if __name__ == '__main__':
             docID =  documentInfo.mdId
             print ("update metadata_document set doi_created = getdate() where md_id ="+docID)
             print ("xml file saved in " + xname)
+            print (DOIURL)
             print('done')
         else: 
             print("external dataset not minted")
